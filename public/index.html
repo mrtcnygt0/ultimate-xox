@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ultimate XOX</title>
+  <style>
+    :root {
+      --primary: #2c3e50;
+      --secondary: #3498db;
+      --light: #ecf0f1;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+
+    body {
+      background: var(--primary);
+      color: var(--light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    /* Lobby Stili */
+    #lobby {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+    }
+
+    .input-group {
+      margin: 10px 0;
+      display: flex;
+      gap: 10px;
+    }
+
+    input, button {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+
+    input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--light);
+    }
+
+    button {
+      background: var(--secondary);
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+
+    /* Oyun Alanı */
+    #game {
+      display: none;
+      width: 100%;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 10px;
+      border-radius: 15px;
+      margin: 20px 0;
+    }
+
+    .cell {
+      aspect-ratio: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .cell:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Durum Çubuğu */
+    #status {
+      text-align: center;
+      font-size: 24px;
+      margin: 20px 0;
+      padding: 15px;
+      background: var(--secondary);
+      border-radius: 10px;
+    }
+
+    /* Skor Tablosu */
+    #scores {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      font-size: 20px;
+      margin: 20px 0;
+    }
+
+    .score-box {
+      padding: 15px 30px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Geri Sayım */
+    #countdown {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      padding: 30px 50px;
+      border-radius: 15px;
+      font-size: 40px;
+      display: none;
+      z-index: 1000;
+    }
+
+    /* Mobil Uyum */
+    @media (max-width: 480px) {
+      .cell {
+        font-size: 30px;
+      }
+
+      #status {
+        font-size: 20px;
+      }
+
+      input, button {
+        padding: 10px 15px;
+      }
+    }
+  </style>
+  <style>
+  /* Oda Bilgisi Stili */
+  #room-info {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 12px 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    backdrop-filter: blur(5px);
+  }
+
+  #roomIdDisplay {
+    color: var(--secondary);
+    font-size: 24px;
+    letter-spacing: 2px;
+  }
+
+  .copy-btn {
+    background: var(--secondary);
+    padding: 8px 15px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .copy-btn:hover {
+    background: #2980b9;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div id="lobby">
+      <div class="input-group">
+        <button onclick="createRoom()">Yeni Oda 🎮</button>
+      </div>
+      <div class="input-group">
+        <input type="text" id="roomIdInput" placeholder="Oda ID Girin">
+        <button onclick="joinRoom()">Katıl ➡️</button>
+      </div>
+    </div>
+
+    <div id="game">
+		<div id="room-info">
+		<span>Oda Kodu: <strong id="roomIdDisplay"></strong></span>
+		<button onclick="copyRoomId()" class="copy-btn">Kopyala 📋</button>
+	  </div>
+	  
+      <div id="board"></div>
+      <div id="status">Bağlanıyor...</div>
+      <div id="scores">
+        <div class="score-box">❌ <span id="scoreX">0</span></div>
+        <div class="score-box">⭕ <span id="scoreO">0</span></div>
+      </div>
+    </div>
+
+    <div id="countdown">Yeni Oyun Başlıyor: <span id="countdown-number">5</span></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    let currentRoomId = "";
+    let playerSymbol = "";
+
+    // Oyun tahtasını oluştur
+    const boardDiv = document.getElementById("board");
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.index = i;
+      cell.addEventListener("click", () => handleCellClick(i));
+      boardDiv.appendChild(cell);
+    }
+
+    // Oda işlemleri
+    function createRoom() {
+      socket.emit("create_room");
+    }
+
+    function joinRoom() {
+      const roomId = document.getElementById("roomIdInput").value.toUpperCase();
+      currentRoomId = roomId;
+      socket.emit("join_room", roomId);
+      document.getElementById("game").style.display = "block";
+    }
+
+    // Oyun mantığı
+    function handleCellClick(index) {
+      socket.emit("make_move", { roomId: currentRoomId, index });
+    }
+
+    // Socket eventleri
+    // Oyun durumu (DÜZELTME: Sembol renkleri)
+	socket.on("game_state", (room) => {
+	  room.board.forEach((symbol, index) => {
+		boardDiv.children[index].textContent = symbol;
+		boardDiv.children[index].style.color = symbol === "X" ? "#e74c3c" : "#3498db";
+	  });
+
+      playerSymbol = room.players[socket.id] || "";
+      const isMyTurn = room.currentPlayer === socket.id;
+      
+      document.getElementById("status").textContent = 
+        room.winner ? (room.winner === "draw" ? "🏆 Berabere!" : `🏆 Kazanan: ${room.winner}`) :
+        isMyTurn ? `🎮 Sıra Sende (${playerSymbol})` : "⏳ Rakibin Sırası...";
+    });
+
+    // Skor güncellemesi (DÜZELTME: Dinamik ID)
+	socket.on("update_scores", (scores) => {
+	  document.getElementById("scoreX").textContent = scores.X;
+	  document.getElementById("scoreO").textContent = scores.O;
+	});
+    // Geri sayım animasyonu
+    socket.on("countdown_start", () => {
+      const countdownDiv = document.getElementById("countdown");
+      let seconds = 5;
+      countdownDiv.style.display = "block";
+      
+      const interval = setInterval(() => {
+        document.getElementById("countdown-number").textContent = seconds;
+        seconds--;
+        if (seconds < 0) {
+          clearInterval(interval);
+          countdownDiv.style.display = "none";
+        }
+      }, 1000);
+    });
+
+    // Diğer eventler
+    // Oda oluşturulduğunda direkt oyun ekranını göster
+	socket.on("room_created", (roomId) => {
+	  currentRoomId = roomId;
+	  document.getElementById("game").style.display = "block"; // Oyun ekranını aç
+	  document.getElementById("lobby").style.display = "none"; // Lobby'yi gizle
+	});
+
+    socket.on("error", (message) => {
+      alert(`❌ Hata: ${message}`);
+    });
+  </script>
+  <script>
+  // Oda oluşturulduğunda
+  socket.on("room_created", (roomId) => {
+    currentRoomId = roomId;
+    document.getElementById("roomIdDisplay").textContent = roomId; // Oda ID'sini göster
+    document.getElementById("game").style.display = "block";
+    document.getElementById("lobby").style.display = "none";
+  });
+
+  // Kopyala butonu
+  function copyRoomId() {
+    navigator.clipboard.writeText(currentRoomId);
+    alert("Oda kodu panoya kopyalandı: " + currentRoomId);
+  }
+</script>
+</body>
+</html>
