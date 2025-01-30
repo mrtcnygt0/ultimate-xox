@@ -111,6 +111,8 @@ function generateRoomId() {
   return Math.random().toString(36).substr(2, 5).toUpperCase();
 }
 
-http.listen(3000, () => {
-  console.log("http://localhost:3000");
+const port = process.env.PORT || 3000; // Heroku portunu dinle
+
+http.listen(port, () => {
+  console.log(`Sunucu çalışıyor: http://localhost:${port}`);
 });
