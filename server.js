@@ -15,19 +15,17 @@ io.on("connection", (socket) => {
   socket.on("create_room", () => {
     const roomId = generateRoomId();
     
-    // Odayı ve oluşturanı ekle
     gameRooms[roomId] = {
       board: Array(9).fill(""),
-      players: { [socket.id]: "X" }, // Oluşturan X olsun
-      currentPlayer: socket.id,      // İlk sıra oluşturanda
-      winner: null
+      players: { [socket.id]: "X" },
+      currentPlayer: socket.id,
+      winner: null,
+      isGameActive: false // Yeni eklenen oyun aktiflik durumu
     };
     scores[roomId] = { X: 0, O: 0 };
 
     socket.join(roomId);
     socket.emit("room_created", roomId);
-    
-    // Oluşturan kişiye oyun durumunu gönder
     io.to(roomId).emit("game_state", gameRooms[roomId]);
   });
 
@@ -38,9 +36,9 @@ io.on("connection", (socket) => {
     if (Object.keys(room.players).length >= 2) return socket.emit("error", "Oda dolu!");
 
     socket.join(roomId);
-    room.players[socket.id] = "O"; // İkinci oyuncu O olsun
+    room.players[socket.id] = "O";
+    room.isGameActive = true; // İkinci oyuncu katılınca oyunu aktif et
     
-    // Tüm oyunculara güncel durumu gönder
     io.to(roomId).emit("game_state", room);
     io.to(roomId).emit("update_scores", scores[roomId]);
   });
@@ -48,6 +46,15 @@ io.on("connection", (socket) => {
   socket.on("make_move", (data) => {
     const { roomId, index } = data;
     const room = gameRooms[roomId];
+    
+    // Gerekli kontroller
+    if (!room || 
+        !room.players[socket.id] || 
+        Object.keys(room.players).length < 2 || 
+        !room.isGameActive) {
+      return socket.emit("error", "Oyun başlamadı!");
+    }
+
     const playerSymbol = room.players[socket.id];
 
     if (room.winner || room.currentPlayer !== socket.id || room.board[index] !== "") return;
