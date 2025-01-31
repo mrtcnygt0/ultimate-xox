@@ -257,7 +257,7 @@
     }
 
     // Socket eventleri
-    // Oyun durumu (DÜZELTME: Sembol renkleri)
+    // Oyun durumu 
 	socket.on("game_state", (room) => {
 	  room.board.forEach((symbol, index) => {
 		boardDiv.children[index].textContent = symbol;
@@ -272,7 +272,7 @@
         isMyTurn ? `🎮 Sıra Sende (${playerSymbol})` : "⏳ Rakibin Sırası...";
     });
 
-    // Skor güncellemesi (DÜZELTME: Dinamik ID)
+    // Skor güncellemesi 
 	socket.on("update_scores", (scores) => {
 	  document.getElementById("scoreX").textContent = scores.X;
 	  document.getElementById("scoreO").textContent = scores.O;
